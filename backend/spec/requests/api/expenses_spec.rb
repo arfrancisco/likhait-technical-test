@@ -5,8 +5,15 @@ RSpec.describe "Api::Expenses", type: :request do
   let!(:transport_category) { Category.create!(name: "Transport") }
 
   describe "GET /api/expenses" do
-  let!(:expense1) { Expense.create!(description: "Lunch", amount: 100.00, category: food_category, date: Date.today) }
-  let!(:expense2) { Expense.create!(description: "Taxi", amount: 50.00, category: transport_category, date: Date.today) }
+    # expense1/expense2 deliberately have date and created_at pointing in
+    # opposite directions, so a test asserting "ordered by date" can't
+    # accidentally pass just because it also happens to match created_at order.
+    let!(:expense1) do
+      Expense.create!(description: "Lunch", amount: 100.00, category: food_category, date: 2.days.ago.to_date, created_at: 1.day.ago)
+    end
+    let!(:expense2) do
+      Expense.create!(description: "Taxi", amount: 50.00, category: transport_category, date: 1.day.ago.to_date, created_at: 2.days.ago)
+    end
 
     it "returns all expenses with category information" do
       get "/api/expenses"
@@ -16,8 +23,26 @@ RSpec.describe "Api::Expenses", type: :request do
       expect(json.length).to eq(2)
     end
 
-    it "returns expenses in descending order by created_at" do
+    it "returns expenses in descending order by date by default" do
       get "/api/expenses"
+
+      json = JSON.parse(response.body)
+      # expense2's date is more recent even though it was created earlier --
+      # proves the default sort is on date, not created_at (BUG-001).
+      expect(json.first["id"]).to eq(expense2.id)
+      expect(json.last["id"]).to eq(expense1.id)
+    end
+
+    it "orders by created_at when explicitly requested via order_by" do
+      get "/api/expenses", params: { order_by: "created_at" }
+
+      json = JSON.parse(response.body)
+      expect(json.first["id"]).to eq(expense1.id)
+      expect(json.last["id"]).to eq(expense2.id)
+    end
+
+    it "falls back to date ordering for an unrecognized order_by value" do
+      get "/api/expenses", params: { order_by: "amount" }
 
       json = JSON.parse(response.body)
       expect(json.first["id"]).to eq(expense2.id)
