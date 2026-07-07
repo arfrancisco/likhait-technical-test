@@ -1,46 +1,30 @@
 class Api::ExpensesController < ApplicationController
-  # Only these columns can be sorted on. BUG-001: expenses were always ordered by
-  # created_at, so newly added expenses (backdated or not) didn't surface at the
-  # top of the list. Default to `date` since that's what users actually expect
-  # "most recent" to mean, but keep the column selectable via `order_by` for
-  # future callers instead of hardcoding it.
-  SORTABLE_COLUMNS = %w[date created_at].freeze
-
+  # Controller just wires params -> service -> render; the filter/sort logic
+  # (Expenses::Finder) and the save/validate logic (Expenses::Creator,
+  # Expenses::Updater) live in app/services so they're testable on their own.
   def index
-    expenses = Expense.includes(:category).order(order_column => :desc)
-
-    if params[:year].present? && params[:month].present?
-      year = params[:year].to_i
-      month = params[:month].to_i
-
-      start_date = Date.new(year, month, 1)
-      end_date = start_date.end_of_month
-
-      # Filter on `date` (the expense's actual date), not `created_at` (when the
-      # record was saved) -- same underlying bug as the ordering above.
-      expenses = expenses.where(date: start_date..end_date)
-    end
-
+    expenses = Expenses::Finder.new(params).call
     render json: expenses.map { |expense| format_expense(expense) }
   end
 
   def create
-    expense = Expense.new(expense_params)
+    result = Expenses::Creator.new(expense_params).call
 
-    if expense.save
-      render json: format_expense(expense), status: :created
+    if result.success?
+      render json: format_expense(result.data), status: :created
     else
-      render json: { errors: expense.errors.full_messages }, status: :unprocessable_entity
+      render json: { errors: result.errors }, status: :unprocessable_entity
     end
   end
 
   def update
     expense = Expense.find(params[:id])
+    result = Expenses::Updater.new(expense, expense_params).call
 
-    if expense.update(expense_params)
-      render json: format_expense(expense)
+    if result.success?
+      render json: format_expense(result.data)
     else
-      render json: { errors: expense.errors.full_messages }, status: :unprocessable_entity
+      render json: { errors: result.errors }, status: :unprocessable_entity
     end
   end
 
@@ -51,12 +35,6 @@ class Api::ExpensesController < ApplicationController
   end
 
   private
-
-  # Falls back to `date` for anything not on the whitelist, so an arbitrary
-  # column can never reach `order()` (params[:order_by] is user input).
-  def order_column
-    SORTABLE_COLUMNS.include?(params[:order_by]) ? params[:order_by] : "date"
-  end
 
   def expense_params
     params.require(:expense).permit(:description, :amount, :category_id, :date)
