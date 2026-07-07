@@ -22,4 +22,28 @@ RSpec.describe "Api::Categories", type: :request do
       expect(json.map { |c| c["name"] }).to eq([ "Food", "Supplies", "Transport" ])
     end
   end
+
+  describe "POST /api/categories" do
+    it "creates a new category" do
+      expect {
+        post "/api/categories", params: { category: { name: "Groceries" } }, as: :json
+      }.to change(Category, :count).by(1)
+
+      expect(response).to have_http_status(:created)
+      json = JSON.parse(response.body)
+      expect(json["name"]).to eq("Groceries")
+    end
+
+    it "rejects a duplicate name" do
+      Category.create!(name: "Groceries")
+
+      expect {
+        post "/api/categories", params: { category: { name: "Groceries" } }, as: :json
+      }.not_to change(Category, :count)
+
+      expect(response).to have_http_status(:unprocessable_entity)
+      json = JSON.parse(response.body)
+      expect(json["errors"]).to include("Name has already been taken")
+    end
+  end
 end
