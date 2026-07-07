@@ -49,6 +49,11 @@ export function useExpenseForm({ initialData, onSubmit }: UseExpenseFormProps) {
       newErrors.date = "Date is required";
     }
 
+    if (formData.date && formData.date > formatDate(new Date())) {
+      // YYYY-MM-DD strings compare correctly with plain string comparison.
+      newErrors.date = "Expense date can't be in the future";
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };

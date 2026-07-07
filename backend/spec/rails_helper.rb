@@ -62,4 +62,8 @@ RSpec.configure do |config|
   config.filter_rails_from_backtrace!
   # arbitrary gems may also be filtered via:
   # config.filter_gems_from_backtrace("gem name")
+
+  # factory_bot_rails is in the Gemfile, but this line was never added, so
+  # build(:model)/create(:model) weren't available in specs.
+  config.include FactoryBot::Syntax::Methods
 end
