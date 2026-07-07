@@ -8,8 +8,11 @@ FROM ruby:$RUBY_VERSION-slim
 WORKDIR /rails
 
 # Install base packages
+# libyaml-dev + pkg-config are required to build psych's native extension
+# (pulled in transitively via debug -> irb -> rdoc); without them `bundle
+# install` fails on a fresh image with "yaml.h not found".
 RUN apt-get update -qq && \
-    apt-get install --no-install-recommends -y build-essential ca-certificates default-mysql-client default-libmysqlclient-dev git && \
+    apt-get install --no-install-recommends -y build-essential ca-certificates default-mysql-client default-libmysqlclient-dev git libyaml-dev pkg-config && \
     rm -rf /var/lib/apt/lists /var/cache/apt/archives
 
 # Install application gems
