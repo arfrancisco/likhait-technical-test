@@ -5,12 +5,12 @@ class Api::CategoriesController < ApplicationController
   end
 
   def create
-    category = Category.new(category_params)
+    result = Categories::Creator.new(category_params).call
 
-    if category.save
-      render json: category, status: :created
+    if result.success?
+      render json: result.data, status: :created
     else
-      render json: { errors: category.errors.full_messages }, status: :unprocessable_entity
+      render json: { errors: result.errors }, status: :unprocessable_entity
     end
   end
 
