@@ -1,11 +1,11 @@
 require 'rails_helper'
 
-# Same happy path as spec/requests/api/expense_tracking_flow_spec.rb, but
-# calling the service objects directly instead of going through HTTP/the
-# controller layer. Deliberately avoids factories, mocks, and stubs -- every
-# record here is created through the actual service classes, the same way
-# the controllers do it, so this proves the services really compose
-# together rather than just asserting against test doubles.
+# Same happy path as expense_tracking_request_flow_spec.rb, but calling the
+# service objects directly instead of going through HTTP/the controller
+# layer. Deliberately avoids factories, mocks, and stubs -- every record
+# here is created through the actual service classes, the same way the
+# controllers do it, so this proves the services really compose together
+# rather than just asserting against test doubles.
 RSpec.describe "Expense tracking service flow" do
   it "supports creating a category, adding an expense to it, listing, updating, and deleting" do
     # 1. Create a category (Categories::Creator).
