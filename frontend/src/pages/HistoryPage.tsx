@@ -111,7 +111,9 @@ const HistoryPage: React.FC = () => {
     loadCategories();
   };
 
-  // Calculate category breakdown
+  // Bucket the month's expenses by category: `amount` is that category's
+  // dollar total, `count` is how many expense line-items fall into it (shown
+  // as "X transactions" per row in CategoryBreakdown).
   const categoryData = expenses.reduce(
     (acc, expense) => {
       const category = expense.category || "Uncategorized";
@@ -128,6 +130,8 @@ const HistoryPage: React.FC = () => {
   const categoryBreakdown = Object.values(categoryData).sort(
     (a, b) => b.amount - a.amount,
   );
+  // Re-sum the per-category buckets back into month-wide totals, for the
+  // "$X (N transactions)" summary shown above the per-category list.
   const total = categoryBreakdown.reduce((sum, cat) => sum + cat.amount, 0);
   const totalCount = categoryBreakdown.reduce(
     (sum, cat) => sum + cat.count,
