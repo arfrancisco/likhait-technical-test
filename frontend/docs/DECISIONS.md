@@ -1,0 +1,16 @@
+# Frontend Decisions & Critique
+
+## Why the category dropdown now comes from the API (FEATURE-001)
+
+Before this change, `ExpenseForm` imported a hardcoded `EXPENSE_CATEGORIES` constant, even though a `GET /api/categories` endpoint already existed, so there was no way for a category created through the UI to ever show up anywhere. `HistoryPage` now fetches categories into state and passes them down as a `categories: string[]` prop, and the constant was deleted outright once nothing referenced it anymore.
+
+## Why `max` on the date input, not just a JS check (BONUS-001)
+
+The date field gets `max={formatDate(new Date())}`, which makes the browser's own native date picker refuse to open on/select a future date: a real HTML5 constraint, not just app-level validation. `useExpenseForm`'s `validateForm()` also independently rejects a future date as a fallback, for the case where the native constraint gets bypassed (a pasted value, a non-standard browser, programmatic form submission). Backend has the same validation as the actual source of truth; the frontend checks exist to give a fast, friendly error rather than a round-trip to the API.
+
+## Things noticed along the way, not fixed (flagging instead)
+
+- **`react-router-dom` is a dependency but completely unused.** `HistoryPage` reads/writes `year`/`month` via `URLSearchParams` and `window.history.pushState` directly instead of using the router. There's only one page (`App.tsx` renders `HistoryPage` unconditionally behind a `currentPage === "history"` check with no other route ever existing), so there's nothing to route between yet, but the dependency sitting there unused is worth a second look before adding a real second page, since at that point you'd want to decide once whether to actually wire up the router or keep hand-rolling URL state.
+- **Dead components**: `QuickAddButton` (a floating "+" button, never imported anywhere) and, under `vibes/`, `Pagination`/`ItemTable`/`ColumnBase` overlap with functionality `CalendarExpenseTable` already hand-rolls inline (its own `<table>` markup and its own page-slicing logic) rather than using them. Worth reconciling: either the table should use the shared primitives, or the primitives should go if they're not the intended pattern.
+- **Client-side-only pagination**: `CalendarExpenseTable` fetches the *entire* filtered month's expenses and paginates in the browser. Fine at current volume, but the backend has no `page`/`per_page` params at all, so this couldn't be moved server-side without an API change.
+- **No visible error on a failed submit**: `useExpenseForm.handleSubmit` catches a thrown error from `onSubmit` and only `console.error`s it; the `errors` state (which drives the little red text under each field) is never touched in that catch block. So if the backend rejects a request (e.g. a duplicate category name reaching `ExpenseForm` somehow, or a network failure), the modal just... does nothing visible. `CategoryForm` doesn't have this problem; it sets its own `error` state from the caught exception. Not fixed here since reworking `useExpenseForm`'s error handling wasn't part of any ticket, but it's the same shape of fix as what `CategoryForm` already does.
